@@ -67,9 +67,11 @@ impl Driver {
     /// Creates a new event loop, returning any error that happened during the
     /// creation.
     pub(crate) fn new() -> io::Result<Driver> {
+        log::info!("Calling new fn of Driver");
         let io = mio::Poll::new()?;
         let wakeup_pair = mio::Registration::new2();
 
+        log::info!("Calling register fn of mio::Poll");
         io.register(
             &wakeup_pair.0,
             TOKEN_WAKEUP,

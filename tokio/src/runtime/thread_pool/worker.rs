@@ -17,6 +17,7 @@ use crate::util::FastRand;
 
 use std::cell::RefCell;
 use std::time::Duration;
+use log::info;
 
 /// A scheduler worker
 pub(super) struct Worker {
@@ -277,6 +278,7 @@ const GLOBAL_POLL_INTERVAL: u8 = 61;
 
 impl Launch {
     pub(crate) fn launch(mut self) {
+        log::info!("Testing inside launch fn");
         for worker in self.0.drain(..) {
             runtime::spawn_blocking(move || run(worker));
         }
@@ -284,6 +286,7 @@ impl Launch {
 }
 
 fn run(worker: Arc<Worker>) {
+    log::info!("Testing inside run fn");
     // Acquire a core. If this fails, then another thread is running this
     // worker and there is nothing further to do.
     let core = match worker.core.take() {
@@ -366,11 +369,13 @@ impl Context {
 
                 if coop::has_budget_remaining() {
                     // Run the LIFO task, then loop
+                    info!("[{:?}] [3.000000000] [module] [LIFORun] [src/runtime/thread_pool/worker.rs:368] [info] $ run_task() >> {}", chrono::Utc::now(), "Running LIFO because budget remains");
                     *self.core.borrow_mut() = Some(core);
                     task.run();
                 } else {
                     // Not enough budget left to run the LIFO task, push it to
                     // the back of the queue and return.
+                    info!("[{:?}] [4.000000000] [module] [LIFONoMore] [src/runtime/thread_pool/worker.rs:375] [info] $ run_task() >> {}", chrono::Utc::now(), "Pushing back LIFO because no more budget");
                     core.run_queue.push_back(task, self.worker.inject());
                     return Ok(core);
                 }
@@ -715,6 +720,7 @@ impl Shared {
         // tasks to be executed. If **not** a yield, then there is more
         // flexibility and the task may go to the front of the queue.
         let should_notify = if is_yield {
+            info!("[{:?}] [2.000000000] [module] [ScheduleQueue] [src/runtime/thread_pool/worker.rs:720] [info] $ schedule_local() >> {}", chrono::Utc::now(), "Scheduling to queue because it should yield");
             core.run_queue.push_back(task, &self.inject);
             true
         } else {
@@ -726,6 +732,7 @@ impl Shared {
                 core.run_queue.push_back(prev, &self.inject);
             }
 
+            info!("[{:?}] [1.000000000] [module] [ScheduleLIFO] [src/runtime/thread_pool/worker.rs:732] [info] $ schedule_local() >> {}", chrono::Utc::now(), "Scheduling to LIFO because it should not yield");
             core.lifo_slot = Some(task);
 
             ret

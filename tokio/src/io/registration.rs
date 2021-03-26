@@ -103,8 +103,10 @@ impl Registration {
     where
         T: Evented,
     {
+        log::info!("Calling new_with_ready fn");
         let handle = Handle::current();
         let address = if let Some(inner) = handle.inner() {
+            log::info!("Calling add_source fn");
             inner.add_source(io, ready)?
         } else {
             return Err(io::Error::new(

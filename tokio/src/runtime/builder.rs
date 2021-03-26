@@ -83,6 +83,7 @@ impl Builder {
     ///
     /// Configuration methods can be chained on the return value.
     pub fn new() -> Builder {
+        log::info!("Testing inside Builder's new fn");
         Builder {
             // No task execution by default
             kind: Kind::Shell,
@@ -128,6 +129,7 @@ impl Builder {
     ///     .unwrap();
     /// ```
     pub fn enable_all(&mut self) -> &mut Self {
+        log::info!("Testing inside enable_all fn");
         #[cfg(feature = "io-driver")]
         self.enable_io();
         #[cfg(feature = "time")]
@@ -169,6 +171,7 @@ impl Builder {
     ///     .unwrap();
     /// ```
     pub fn core_threads(&mut self, val: usize) -> &mut Self {
+        log::info!("Testing inside core_threads fn");
         assert_ne!(val, 0, "Core threads cannot be zero");
         self.core_threads = Some(val);
         self
@@ -310,6 +313,8 @@ impl Builder {
     /// });
     /// ```
     pub fn build(&mut self) -> io::Result<Runtime> {
+        log::info!("Testing inside build fn");
+
         match self.kind {
             Kind::Shell => self.build_shell_runtime(),
             #[cfg(feature = "rt-core")]
@@ -456,6 +461,7 @@ cfg_rt_threaded! {
         ///
         /// [1]: index.html#runtime-configurations
         pub fn threaded_scheduler(&mut self) -> &mut Self {
+            log::info!("Testing inside threaded_scheduler fn");
             self.kind = Kind::ThreadPool;
             self
         }
@@ -466,6 +472,7 @@ cfg_rt_threaded! {
             use crate::runtime::park::Parker;
             use std::cmp;
 
+            log::info!("Testing inside build_threaded_runtime fn");
             let core_threads = self.core_threads.unwrap_or_else(|| cmp::min(self.max_threads, num_cpus()));
             assert!(core_threads <= self.max_threads, "Core threads number cannot be above max limit");
 
@@ -491,6 +498,7 @@ cfg_rt_threaded! {
 
             // Spawn the thread pool workers
             handle.enter(|| launch.launch());
+            log::info!("Testing inside build_threaded_runtime fn 2");
 
             Ok(Runtime {
                 kind: Kind::ThreadPool(scheduler),

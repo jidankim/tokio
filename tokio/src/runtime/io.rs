@@ -31,6 +31,7 @@ mod variant {
         #[cfg(loom)]
         assert!(!enable);
 
+        log::info!("Calling create_driver fn");
         if enable {
             let driver = driver::Driver::new()?;
             let handle = driver.handle();

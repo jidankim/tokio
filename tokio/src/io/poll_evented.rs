@@ -175,6 +175,7 @@ where
     /// from a future driven by a tokio runtime, otherwise runtime can be set
     /// explicitly with [`Handle::enter`](crate::runtime::Handle::enter) function.
     pub fn new(io: E) -> io::Result<Self> {
+        log::info!("Calling new fn of PollEvented");
         PollEvented::new_with_ready(io, mio::Ready::all())
     }
 
@@ -203,6 +204,7 @@ where
     /// from a future driven by a tokio runtime, otherwise runtime can be set
     /// explicitly with [`Handle::enter`](crate::runtime::Handle::enter) function.
     pub fn new_with_ready(io: E, ready: mio::Ready) -> io::Result<Self> {
+        log::info!("Calling new_with_ready fn of PollEvented");
         let registration = Registration::new_with_ready(&io, ready)?;
         Ok(Self {
             io: Some(io),

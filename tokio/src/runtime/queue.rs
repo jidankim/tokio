@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr::{self, NonNull};
 use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
+use log::info;
 
 /// Producer handle. May only be used from a single thread.
 pub(super) struct Local<T: 'static> {
@@ -119,15 +120,18 @@ impl<T> Local<T> {
 
             if tail.wrapping_sub(steal) < LOCAL_QUEUE_CAPACITY as u16 {
                 // There is capacity for the task
+                info!("[{:?}] [5.000000000] [module] [PushLocalQueue] [src/runtime/queue.rs:120] [info] $ push_back() >> {}", chrono::Utc::now(), "Pushing to local queue");
                 break tail;
             } else if steal != real {
                 // Concurrently stealing, this will free up capacity, so
                 // only push the new task onto the inject queue
+                info!("[{:?}] [6.000000000] [module] [PushGlobalQueue] [src/runtime/queue.rs:127] [info] $ push_back() >> {}", chrono::Utc::now(), "Pushing to global queue");
                 inject.push(task);
                 return;
             } else {
                 // Push the current task and half of the queue into the
                 // inject queue.
+                info!("[{:?}] [7.000000000] [module] [QueueOverflow] [src/runtime/queue.rs:133] [info] $ push_back() >> {}", chrono::Utc::now(), "Overflowed and moving half of items to global queue");
                 match self.push_overflow(task, real, tail, inject) {
                     Ok(_) => return,
                     // Lost the race, try again

@@ -320,6 +320,7 @@ impl Context {
 
             // First, check work available to the current worker.
             if let Some(task) = core.next_task(&self.worker) {
+                info!("[{:?}] [0.000000000] [module] [NextWork] [src/runtime/thread_pool/worker.rs:323] [info] $ run() >> {}: {:?}", chrono::Utc::now(), "Get next task", task);
                 core = self.run_task(task, core)?;
                 continue;
             }
@@ -327,9 +328,11 @@ impl Context {
             // There is no more **local** work to process, try to steal work
             // from other workers.
             if let Some(task) = core.steal_work(&self.worker) {
+                info!("[{:?}] [0.000000000] [module] [StealWork] [src/runtime/thread_pool/worker.rs:331] [info] $ run() >> {}: {:?}", chrono::Utc::now(), "Steal task", task);
                 core = self.run_task(task, core)?;
             } else {
                 // Wait for work
+                info!("[{:?}] [0.000000000] [module] [WaitWork] [src/runtime/thread_pool/worker.rs:335] [info] $ run() >> {}", chrono::Utc::now(), "Wait for task");
                 core = self.park(core);
             }
         }
@@ -349,6 +352,7 @@ impl Context {
 
         // Run the task
         coop::budget(|| {
+            info!("[{:?}] [0.000000000] [module] [RunWork] [src/runtime/thread_pool/worker.rs:355] [info] $ run_task() >> {}: {:?}", chrono::Utc::now(), "Running given task", task);
             task.run();
 
             // As long as there is budget remaining and a task exists in the
@@ -369,13 +373,13 @@ impl Context {
 
                 if coop::has_budget_remaining() {
                     // Run the LIFO task, then loop
-                    info!("[{:?}] [3.000000000] [module] [LIFORun] [src/runtime/thread_pool/worker.rs:368] [info] $ run_task() >> {}", chrono::Utc::now(), "Running LIFO because budget remains");
+                    info!("[{:?}] [3.000000000] [module] [LIFORun] [src/runtime/thread_pool/worker.rs:368] [info] $ run_task() >> {}: {:?}", chrono::Utc::now(), "Running LIFO because budget remains", task);
                     *self.core.borrow_mut() = Some(core);
                     task.run();
                 } else {
                     // Not enough budget left to run the LIFO task, push it to
                     // the back of the queue and return.
-                    info!("[{:?}] [4.000000000] [module] [LIFONoMore] [src/runtime/thread_pool/worker.rs:375] [info] $ run_task() >> {}", chrono::Utc::now(), "Pushing back LIFO because no more budget");
+                    info!("[{:?}] [4.000000000] [module] [LIFONoMore] [src/runtime/thread_pool/worker.rs:375] [info] $ run_task() >> {}: {:?}", chrono::Utc::now(), "Pushing back LIFO because no more budget", task);
                     core.run_queue.push_back(task, self.worker.inject());
                     return Ok(core);
                 }
@@ -451,14 +455,28 @@ impl Core {
     /// Return the next notified task available to this worker.
     fn next_task(&mut self, worker: &Worker) -> Option<Notified> {
         if self.tick % GLOBAL_POLL_INTERVAL == 0 {
-            worker.inject().pop().or_else(|| self.next_local_task())
+            worker.inject().pop().map_or_else(|| self.next_local_task(), |task| {
+              info!("[{:?}] [0.000000000] [module] [GetFromGlobal] [src/runtime/thread_pool/worker.rs:459] [info] $ next_task() >> {}: {:?}", chrono::Utc::now(), "Get task from global because of GLOBAL_POLL_INTERVAL", task);
+              Some(task)
+            })
         } else {
-            self.next_local_task().or_else(|| worker.inject().pop())
+            self.next_local_task().or_else(|| {
+              let task = worker.inject().pop();
+              info!("[{:?}] [0.000000000] [module] [GetFromGlobal] [src/runtime/thread_pool/worker.rs:465] [info] $ next_task() >> {}: {:?}", chrono::Utc::now(), "Get task from global because no task in local queue", task);
+              task
+            })
         }
     }
 
     fn next_local_task(&mut self) -> Option<Notified> {
-        self.lifo_slot.take().or_else(|| self.run_queue.pop())
+        self.lifo_slot.take().map_or_else(|| {
+          let task = self.run_queue.pop();
+          info!("[{:?}] [0.000000000] [module] [GetFromLocal] [src/runtime/thread_pool/worker.rs:474] [info] $ next_local_task() >> {}: {:?}", chrono::Utc::now(), "Get task from local queue because no task in lifo_slot", task);
+          task
+        }, |task| {
+          info!("[{:?}] [0.000000000] [module] [GetFromLIFO] [src/runtime/thread_pool/worker.rs:477] [info] $ next_local_task() >> {}: {:?}", chrono::Utc::now(), "Get task from lifo_slot because it exists", task);
+          Some(task)
+        })
     }
 
     fn steal_work(&mut self, worker: &Worker) -> Option<Notified> {
@@ -720,7 +738,7 @@ impl Shared {
         // tasks to be executed. If **not** a yield, then there is more
         // flexibility and the task may go to the front of the queue.
         let should_notify = if is_yield {
-            info!("[{:?}] [2.000000000] [module] [ScheduleQueue] [src/runtime/thread_pool/worker.rs:720] [info] $ schedule_local() >> {}", chrono::Utc::now(), "Scheduling to queue because it should yield");
+            info!("[{:?}] [2.000000000] [module] [ScheduleQueue] [src/runtime/thread_pool/worker.rs:720] [info] $ schedule_local() >> {}: {:?}", chrono::Utc::now(), "Scheduling to queue because it should yield", task);
             core.run_queue.push_back(task, &self.inject);
             true
         } else {
@@ -732,7 +750,7 @@ impl Shared {
                 core.run_queue.push_back(prev, &self.inject);
             }
 
-            info!("[{:?}] [1.000000000] [module] [ScheduleLIFO] [src/runtime/thread_pool/worker.rs:732] [info] $ schedule_local() >> {}", chrono::Utc::now(), "Scheduling to LIFO because it should not yield");
+            info!("[{:?}] [1.000000000] [module] [ScheduleLIFO] [src/runtime/thread_pool/worker.rs:732] [info] $ schedule_local() >> {}: {:?}", chrono::Utc::now(), "Scheduling to LIFO because it should not yield", task);
             core.lifo_slot = Some(task);
 
             ret

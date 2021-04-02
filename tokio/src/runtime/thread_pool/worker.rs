@@ -753,6 +753,7 @@ impl Shared {
             }
 
             // Otherwise, use the inject queue
+            info!("[{:?}] [0.000000000] [module] [ScheduleGlobal] [src/runtime/thread_pool/worker.rs:756] [info] $ schedule() >> {}: {:?}", chrono::Utc::now(), "Schedule to global because task is not part of current thread", task);
             self.inject.push(task);
             self.notify_parked();
         });

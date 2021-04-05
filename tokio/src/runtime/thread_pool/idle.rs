@@ -5,6 +5,7 @@ use crate::loom::sync::Mutex;
 
 use std::fmt;
 use std::sync::atomic::Ordering::{self, SeqCst};
+use log::info;
 
 pub(super) struct Idle {
     /// Tracks both the number of searching workers and the number of unparked
@@ -51,6 +52,7 @@ impl Idle {
         // will pair with the `fetch_sub(1)` when transitioning out of
         // searching.
         if !self.notify_should_wakeup() {
+            info!("[tokio] [NotifyWorker] [src/runtime/thread_pool/idle.rs:54] [info] $ worker_to_notify() >> {}", "No idle worker to notify before lock");
             return None;
         }
 
@@ -59,11 +61,13 @@ impl Idle {
 
         // Check again, now that the lock is acquired
         if !self.notify_should_wakeup() {
+            info!("[tokio] [NotifyWorker] [src/runtime/thread_pool/idle.rs:64] [info] $ worker_to_notify() >> {}", "No idle worker to notify after lock");
             return None;
         }
 
         // A worker should be woken up, atomically increment the number of
         // searching workers as well as the number of unparked workers.
+        info!("[tokio] [NotifyWorker] [src/runtime/thread_pool/idle.rs:70] [info] $ worker_to_notify() >> {}", "Successfully notifying idle worker");
         State::unpark_one(&self.state);
 
         // Get the worker to unpark

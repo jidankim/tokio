@@ -799,6 +799,7 @@ impl Shared {
 
     fn notify_parked(&self) {
         if let Some(index) = self.idle.worker_to_notify() {
+            info!("[tokio] [NotifyWorker] [src/runtime/thread_pool/worker.rs:802] [info] $ notify_parked() >> {}: {:?}", "Notifyied idle worker", index);
             self.remotes[index].unpark.unpark();
         }
     }

@@ -324,7 +324,6 @@ impl Context {
             // There is no more **local** work to process, try to steal work
             // from other workers.
             if let Some(task) = core.steal_work(&self.worker) {
-                info!("[tokio] [StealWork] [src/runtime/thread_pool/worker.rs:331] [info] $ run() >> {}: {:?}", "Steal task", task);
                 core = self.run_task(task, core)?;
             } else {
                 // Wait for work
@@ -496,11 +495,13 @@ impl Core {
 
             let target = &worker.shared.remotes[i];
             if let Some(task) = target.steal.steal_into(&mut self.run_queue) {
+                info!("[tokio] [StealWork] [src/runtime/thread_pool/worker.rs:498] [info] $ steal_work() >> {}: {:?}", "Steal task", task);
                 return Some(task);
             }
         }
 
         // Fallback on checking the global queue
+        info!("[tokio] [GetFromGlobal] [src/runtime/thread_pool/worker.rs:504] [info] $ steal_work() >> {}", "Steal from global because no local work is available to steal");
         worker.shared.inject.pop()
     }
 
